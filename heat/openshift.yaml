@@ -1,0 +1,86 @@
+heat_template_version: 2015-04-30
+
+# This heat template will 
+# - configure a new project, $project_name
+# - set quotas to fit a openshift installation
+# - upload a SSH key
+# In the new project it will:
+# - add a new user
+# - create a new network, $project_name
+# - create a subnet within network, $project_name_subnet
+# - create  arouter and connect it to external network
+# - 
+# Spin up VM's in this order
+# - ns, BIND server with ip x.x.x.3
+# - ansible-bastion,     ip x.x.x.10
+# - master[1:3]          ip x.x.x.21-23
+# - infra[1:2]           ip x.x.x.31-32
+# - node[1:2]            ip x.x.x.41-42
+# - nfs                  ip x.x.x.100
+
+parameters:
+  project_name:
+    type: string
+    default: openshift
+    description: name of the project to create, will be used to create network and subnets
+  project_username:
+    type: string
+    default: openshift-user
+  project_user_password:
+    type: string
+    default: RANDOM
+  # NETWORK
+  external_network_name:
+    type: string
+    description: external net name. use neutron net-list to figure it out.
+  network_name: 
+    type: string
+    default: openshift
+    description: Name of the network to be created with the project
+  network_subnet_name:
+    type: string
+    default: openshift-subnet
+  network_subnet_cidr:
+    type: string 
+    default: "192.168.13.0/24"
+    
+
+
+resources:
+  openshift_project:
+    type: OS::Keystone::Project
+    properties:
+      name: { get_param: project_name }
+      domain: default
+  openshift_user:
+    type: OS::Keystone::User
+    properties:
+      name: { get_param: project_username }
+      default_project: { get_resource: openshift_project }
+      password: { get_param: project_user_password  }
+  # NETWORK
+  openshift_network:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: network_name }
+  openshift_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: openshift_network }
+      cidr: { get_param: network_subnet_cidr }
+  openshift_router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: network_name }
+
+  openshift_router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: openshift_router }
+      subnet_id: { get_resource: openshift_subnet }
+
+
+
+
+output:
