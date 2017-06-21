@@ -18,7 +18,21 @@ parameters:
   network_subnet_cidr:
     type: string 
     default: "192.168.13.0/24"
-    
+
+  network_ns_ip:
+    type: string
+    default: "192.168.13.3"
+  
+  #General stuff
+
+  public_key_name:
+    type: string
+    description: The name of your public key you are providing
+    default: openshift_public_key
+
+  public_key_value:
+    type: string
+    description: The actual public key you are providing
 
 
 resources:
@@ -48,4 +62,58 @@ resources:
       router_id: { get_resource: openshift_router }
       subnet_id: { get_resource: openshift_subnet }
 
+  # Access Group
+	security_group:
+		type: OS::Neutron::SecurityGroup
+		properties:
+			name: openshift_sg
+			description: Ping and SSH
+			rules:
+			- protocol: icmp
+			- protocol: tcp
+				port_range_min: 22
+				port_range_max: 22
+				remote_mode: remote_ip_prefix
+				remote_ip_prefix: 0.0.0.0/0 
+				# Change TO
+				# remote_mode: remote_group_id
+				# remote_group_id: default 
+			- protocol: tcp
+				port_range_min: 5000
+				port_range_max: 5000
+
+
+
+  # General stuff
+  existing_key_pair:
+    type: OS::Nova::KeyPair
+    properites:
+      name: { get_resource: public_key_name }
+      public_key: { get_param: public_key_value }
+
+
+  # VM's
+  nameserver:
+    type: OS::Nova::Server
+ type: OS::Nova::Server
+    properties:
+      admin_pass: String
+      block_device_mapping: [{"delete_on_termination": Boolean, "device_name": String, "volume_size": Integer, "volume_id": String, "snapshot_id": String}, {"delete_on_termination": Boolean, "device_name": String, "volume_size": Integer, "volume_id": String, "snapshot_id": String}, ...]
+      block_device_mapping_v2: [{"ephemeral_format": String, "boot_index": Integer, "ephemeral_size": Integer, "swap_size": Integer, "volume_size": Integer, "disk_bus": String, "device_name": String, "image": String, "volume_id": String, "device_type": String, "delete_on_termination": Boolean, "snapshot_id": String, "image_id": String}, {"ephemeral_format": String, "boot_index": Integer, "ephemeral_size": Integer, "swap_size": Integer, "volume_size": Integer, "disk_bus": String, "device_name": String, "image": String, "volume_id": String, "device_type": String, "delete_on_termination": Boolean, "snapshot_id": String, "image_id": String}, ...]
+      diskConfig: String
+      flavor: x1.small
+      image: rhel7.3
+      image_update_policy: String
+      key_name: { get_param: public_key_name }
+      #metadata: {...}
+      name: String
+      networks:
+				- network: { get_resource: openshift_network }
+# [{"network": String, "floating_ip": String, "port_extra_properties": {"admin_state_up": Boolean, "qos_policy": String, "port_security_enabled": Boolean, "allowed_address_pairs": [{"ip_address": String, "mac_address": String}, {"ip_address": String, "mac_address": String}, ...], "value_specs": {...}, "binding:vnic_type": String, "mac_address": String}, "allocate_network": String, "subnet": String, "port": String, "uuid": String, "fixed_ip": String}, {"network": String, "floating_ip": String, "port_extra_properties": {"admin_state_up": Boolean, "qos_policy": String, "port_security_enabled": Boolean, "allowed_address_pairs": [{"ip_address": String, "mac_address": String}, {"ip_address": String, "mac_address": String}, ...], "value_specs": {...}, "binding:vnic_type": String, "mac_address": String}, "allocate_network": String, "subnet": String, "port": String, "uuid": String, "fixed_ip": String}, ...]
+      security_groups: { get_resource: security_group }
+#      software_config_transport: String
+#      tags: [String, String, ...]
+#      user_data: String
+#      user_data_format: String
+#      user_data_update_policy: String
 
