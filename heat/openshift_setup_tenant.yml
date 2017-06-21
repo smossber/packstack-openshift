@@ -1,0 +1,53 @@
+heat_template_version: 2015-04-30
+
+description:
+
+parameters:
+  project_name:
+    type: string
+    default: openshift
+    description: name of the project to create, will be used to create network and subnets
+
+  project_user_role:
+    type: string
+    default: openshift-user
+
+  project_username:
+    type: string
+    default: openshift-user
+
+  project_user_password:
+    type: string
+    default: RANDOM
+    
+
+
+resources:
+  openshift_project:
+    type: OS::Keystone::Project
+    properties:
+      name: { get_param: project_name }
+      domain: default
+  openshift_user_role:
+    type: OS::Keystone::Role
+    properties: 
+      name: { get_param: project_user_role }
+  openshift_user:
+   type: OS::Keystone::User
+   properties:
+     name: { get_param: project_username }
+     default_project: { get_resource: openshift_project }
+     description: OpenShift User
+     password: { get_param: project_user_password  }
+     roles:
+       - role: { get_resource: openshift_user_role }
+         project: { get_resource: openshift_project }
+       - role: heat_stack_user
+         project: { get_resource: openshift_project }
+  admin_user:
+    type: OS::Keystone::UserRoleAssignment
+    depends_on: openshift_project
+    properties:
+      roles: [{"role": "admin", "project": { get_resource: openshift_project } } , {"role": "heat_stack_owner", "project": { get_resource: openshift_project } } ]
+      user: "admin"
+

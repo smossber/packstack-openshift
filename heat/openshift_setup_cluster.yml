@@ -1,0 +1,51 @@
+heat_template_version: 2015-04-30
+
+parameters:
+  # NETWORK
+  external_network_name:
+    type: string
+    description: external net name. use neutron net-list to figure it out.
+
+  network_name: 
+    type: string
+    default: openshift_network
+    description: Name of the network to be created with the project
+
+  network_subnet_name:
+    type: string
+    default: openshift-subnet
+
+  network_subnet_cidr:
+    type: string 
+    default: "192.168.13.0/24"
+    
+
+
+resources:
+ # NETWORK
+  openshift_network:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: network_name }
+
+  openshift_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: openshift_network }
+      cidr: { get_param: network_subnet_cidr }
+
+  openshift_router:
+    type: OS::Neutron::Router
+    depends_on: openshift_network
+    properties:
+      external_gateway_info:
+        network: { get_param: external_network_name }
+      name: router-external-openshift
+
+  openshift_router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: openshift_router }
+      subnet_id: { get_resource: openshift_subnet }
+
+
